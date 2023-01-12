@@ -16,6 +16,7 @@ namespace Sandstorm\LightweightElasticsearch\Query;
 use Neos\Eel\ProtectedContextAwareInterface;
 use Neos\Flow\Mvc\ActionRequest;
 use Neos\ContentRepository\Domain\Model\NodeInterface;
+use Neos\Flow\Mvc\Exception\InvalidArgumentTypeException;
 use Sandstorm\LightweightElasticsearch\Query\Aggregation\AggregationsBuilder;
 use Sandstorm\LightweightElasticsearch\Query\Aggregation\TermsAggregationBuilder;
 use Sandstorm\LightweightElasticsearch\Query\Highlight\NeosFulltextHighlightBuilder;
@@ -71,9 +72,19 @@ class ElasticsearchHelper implements ProtectedContextAwareInterface
         return new AggregationRequestBuilder($contextNode, $additionalIndices);
     }
 
-    public function createTermsAggregation(string $fieldName, ?string $selectedValue = null): TermsAggregationBuilder
+    public function createTermsAggregation(string $fieldName, $selectedValues = null): TermsAggregationBuilder
     {
-        return TermsAggregationBuilder::create($fieldName, $selectedValue);
+
+        if (is_string($selectedValues)) {
+            return TermsAggregationBuilder::create($fieldName, [$selectedValues]);
+        } elseif (is_array($selectedValues)) {
+            return TermsAggregationBuilder::create($fieldName, $selectedValues);
+        } elseif ($selectedValues === null) {
+            return TermsAggregationBuilder::create($fieldName, []);
+        }
+
+        throw new InvalidArgumentTypeException('Argument $selectedValues has to be a string or an array.');
+
     }
 
     public function createNeosFulltextHighlight(int $fragmentSize = 150, int $fragmentCount = 2): NeosFulltextHighlightBuilder

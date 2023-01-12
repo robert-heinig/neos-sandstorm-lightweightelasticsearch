@@ -52,6 +52,13 @@ class BooleanQueryBuilder implements ProtectedContextAwareInterface, SearchQuery
         return $this;
     }
 
+    /** See https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-minimum-should-match.html */
+    public function minimumShouldMatch(string $pattern): self
+    {
+        $this->query['bool']['minimum_should_match'] = $pattern;
+        return $this;
+    }
+
     /**
      * Add a query to the "must_not" part of the Bool query. This query must NEVER match for a document to be included in the results.
      *

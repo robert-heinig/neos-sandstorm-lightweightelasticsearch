@@ -40,15 +40,43 @@ class TermsAggregationResult implements AggregationResultInterface, ProtectedCon
     }
 
     public function getBuckets() {
-        return $this->aggregationResponse['buckets'];
+
+        $buckets = $this->aggregationResponse['buckets'];
+
+        $subAggregation = $this->termsAggregationBuilder->getSubAggregation();
+        if ($subAggregation instanceof TermsAggregationBuilder) {
+            $subAggregationFieldName = $subAggregation->getFieldName();
+            foreach ($buckets as $index => $bucket) {
+
+                if (isset($bucket[$subAggregationFieldName])) {
+                    $bucket['subAggregation'] = self::create($bucket[$subAggregationFieldName], $subAggregation);
+                } else {
+                    $bucket['subAggregation'] = null;
+                }
+
+                $buckets[$index] = $bucket;
+            }
+        }
+
+        return $buckets;
+
     }
 
     /**
-     * @return string|null
+     * @param string|null $value
+     * @return bool
      */
-    public function getSelectedValue(): ?string
+    public function isSelectedValue(?string $value = null): bool
     {
-        return $this->termsAggregationBuilder->getSelectedValue();
+        return $this->termsAggregationBuilder->isSelectedValue($value);
+    }
+
+    public function noSelectedValues(): bool {
+        return !$this->termsAggregationBuilder->hasSelectedValues();
+    }
+
+    public function hasSelectedValues(): bool {
+        return $this->termsAggregationBuilder->hasSelectedValues();
     }
 
     public function allowsCallOfMethod($methodName)

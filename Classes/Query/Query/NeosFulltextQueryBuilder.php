@@ -53,6 +53,7 @@ class NeosFulltextQueryBuilder implements SearchQueryBuilderInterface, Protected
     public function fulltext(string $query = null): self
     {
         $this->boolQuery->must(SimpleQueryStringBuilder::create($query ?? '')->fields([
+            'neos_fulltext.h1_noDecompound^10',
             'neos_fulltext.h1^5',
             'neos_fulltext.h2^4',
             'neos_fulltext.h3^3',

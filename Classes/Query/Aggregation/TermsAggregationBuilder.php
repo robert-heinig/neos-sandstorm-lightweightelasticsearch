@@ -3,6 +3,7 @@
 
 namespace Sandstorm\LightweightElasticsearch\Query\Aggregation;
 
+use Neos\Eel\ProtectedContextAwareInterface;
 use Neos\Flow\Annotations as Flow;
 use Sandstorm\LightweightElasticsearch\Query\Query\SearchQueryBuilderInterface;
 
@@ -19,33 +20,43 @@ use Sandstorm\LightweightElasticsearch\Query\Query\SearchQueryBuilderInterface;
  *
  * @Flow\Proxy(false)
  */
-class TermsAggregationBuilder implements AggregationBuilderInterface, SearchQueryBuilderInterface
+class TermsAggregationBuilder implements AggregationBuilderInterface, SearchQueryBuilderInterface, ProtectedContextAwareInterface
 {
     private string $fieldName;
     /**
-     * @var string|null the selected value, as taken from the URL parameters
+     * @var array the selected values, as taken from the URL parameters
      */
-    private ?string $selectedValue;
+    private array $selectedValues;
 
-    public static function create(string $fieldName, ?string $selectedValue = null): self
+    private ?TermsAggregationBuilder $subAggregation = null;
+
+    public static function create(string $fieldName, array $selectedValues = []): self
     {
-        return new self($fieldName, $selectedValue);
+        return new self($fieldName, $selectedValues);
     }
 
-    private function __construct(string $fieldName, ?string $selectedValue = null)
+    private function __construct(string $fieldName, array $selectedValues = [])
     {
         $this->fieldName = $fieldName;
-        $this->selectedValue = $selectedValue;
+        $this->selectedValues = $selectedValues;
     }
 
     public function buildAggregationRequest(): array
     {
         // This is a Terms aggregation, with the field name specified by the user.
-        return [
+        $aggregation = [
             'terms' => [
                 'field' => $this->fieldName
             ]
         ];
+
+        if ($this->subAggregation instanceof TermsAggregationBuilder) {
+            $aggregation['aggs'] = [
+                $this->subAggregation->getFieldName() => $this->subAggregation->buildAggregationRequest(),
+            ];
+        }
+
+        return $aggregation;
     }
 
     public function bindResponse(array $aggregationResponse): AggregationResultInterface
@@ -56,10 +67,10 @@ class TermsAggregationBuilder implements AggregationBuilderInterface, SearchQuer
     public function buildQuery(): array
     {
         // for implementing faceting, we build the restriction query here
-        if ($this->selectedValue) {
+        if ($this->selectedValues) {
             return [
-                'term' => [
-                    $this->fieldName => $this->selectedValue
+                'terms' => [
+                    $this->fieldName => $this->selectedValues
                 ]
             ];
         }
@@ -70,10 +81,39 @@ class TermsAggregationBuilder implements AggregationBuilderInterface, SearchQuer
     }
 
     /**
-     * @return string|null
+     * @param string|null $value
+     * @return bool
      */
-    public function getSelectedValue(): ?string
+    public function isSelectedValue(?string $value = null): bool
     {
-        return $this->selectedValue;
+        return in_array($value, $this->selectedValues, true);
     }
+
+    public function hasSelectedValues(): bool {
+        return !empty($this->selectedValues);
+    }
+
+    public function getFieldName(): string {
+        return $this->fieldName;
+    }
+
+    public function allowsCallOfMethod($methodName)
+    {
+        return true;
+    }
+
+    public function getSubAggregation(): ?TermsAggregationBuilder {
+        return $this->subAggregation;
+    }
+
+    /**
+     * @param AggregationBuilderInterface $aggregation
+     * @return $this
+     */
+    public function addAsSubAggregation(AggregationBuilderInterface $aggregation): self {
+        /** @noinspection PhpFieldAssignmentTypeMismatchInspection */
+        $this->subAggregation = $aggregation;
+        return $this;
+    }
+
 }

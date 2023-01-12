@@ -83,6 +83,38 @@ class SearchRequestBuilder extends AbstractSearchRequestBuilder
     }
 
     /**
+     * Fast and very dirty way to add sorting.
+     * @param string|null $identifier
+     * @return SearchRequestBuilder
+     */
+    public function sort(?string $identifier = null): self
+    {
+
+        switch ($identifier) {
+            case 'timeDesc':
+                $configuration = [
+                    'sort_date_time' => ['order' => 'desc'],
+                ];
+                break;
+            case 'supportCenterScoreDesc':
+                $configuration = [
+                    'sort_support_center_weight' => ['order' => 'desc'],
+                    '_score'                     => ['order' => 'desc'],
+                ];
+                break;
+            default:
+                $configuration = [
+                    '_score' => ['order' => 'desc'],
+                ];
+        }
+
+        $this->request['sort'][] = $configuration;
+
+        return $this;
+
+    }
+
+    /**
      * Execute the query and return the SearchResult object as result.
      *
      * You can call this method multiple times; and the request is only executed at the first time; and cached
